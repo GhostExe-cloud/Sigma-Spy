@@ -1,14 +1,14 @@
 return {
     --// Hooking
-    ForceUseCustomComm = false,
-    ReplaceMetaCallFunc = false,
-    NoReceiveHooking = false,
+    ForceUseCustomComm = true,
+    ReplaceMetaCallFunc = true,
+    NoReceiveHooking = true,
     BlackListedServices = {
         "RobloxReplicatedStorage"
     },
 
     --// Processing
-    ForceKonstantDecompiler = false,
+    ForceKonstantDecompiler = true,
 
     --// Editor
     VariableNames = {
