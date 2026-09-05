@@ -109,28 +109,43 @@ end
 
 function Generation:LoadParser(ModuleUrl: string)
 	local ParserSources = {
-		ModuleUrl, -- Try the configured URL first (GhostExe-cloud version)
+		"https://raw.githubusercontent.com/nevskiydeveloper/Roblox-Parser/main/dist/Main.luau", -- Working minified version - use first
+		ModuleUrl, -- Try the configured URL
 		"https://raw.githubusercontent.com/GhostExe-cloud/Sigma-Spy/main/lib/Parser.luau", -- Backup for configured URL
-		"https://raw.githubusercontent.com/nevskiydeveloper/Roblox-Parser/main/dist/Main.luau", -- Working mirror
-		"https://raw.githubusercontent.com/xfwil/Roblox-parser/main/dist/Main.luau",
-		"https://raw.githubusercontent.com/depthso/Roblox-parser/main/dist/Main.luau"
+		"https://raw.githubusercontent.com/xfwil/Roblox-parser/main/dist/Main.luau"
 	}
 	
 	for _, url in ipairs(ParserSources) do
 		local success, result = pcall(function()
 			local code = game:HttpGet(url)
-			local func = loadstring(code, "Parser")
+			
+			-- Try to compile the code
+			local func, compileErr = loadstring(code, "Parser")
 			if not func then
-				error("Failed to compile parser code")
+				error("Failed to compile: " .. tostring(compileErr))
 			end
-			return func()
+			
+			-- Set up environment for the parser
+			local env = getfenv(func)
+			setfenv(func, env)
+			
+			-- Execute and return the module
+			local module = func()
+			
+			-- Validate the module has required structure
+			if not module or not module.Modules then
+				error("Invalid module structure - missing Modules table")
+			end
+			
+			return module
 		end)
-		if success and result and result.Modules then
+		
+		if success and result then
 			ParserModule = result
 			print("[Sigma Spy] Loaded Parser from:", url)
 			return
 		else
-			warn("[Sigma Spy] Failed to load Parser from:", url, result or "")
+			warn("[Sigma Spy] Failed to load Parser from:", url, "-", tostring(result))
 		end
 	end
 	
@@ -144,7 +159,18 @@ function Generation:LoadParser(ModuleUrl: string)
 				MakeName = function(self, obj) return tostring(obj) end,
 				MakeReplacements = function(self) return {} end
 			}
-		}
+		},
+		New = function(self, config)
+			return {
+				Variables = {new = function() return {} end},
+				Formatter = self.Modules.Formatter,
+				Parser = {
+					ParseTableIntoString = function(self, opts) return "{}" end,
+					MakePathString = function(self, opts) return "game", 1 end,
+					MakeVariableCode = function(self, classes, skipComments) return "" end
+				}
+			}
+		end
 	}
 end
 
