@@ -76,8 +76,8 @@ local SetClipboard = setclipboard or toclipboard or set_clipboard
 --// Libraries - Load ReGui with fallback mirrors
 local ReGui
 local ReGuiSources = {
-    'https://raw.githubusercontent.com/Awakenchan/Dear-ReGui/main/ReGui.lua',
     'https://raw.githubusercontent.com/kiciahook/Dear-ReGui/main/ReGui.lua',
+    'https://raw.githubusercontent.com/Awakenchan/Dear-ReGui/main/ReGui.lua',
     'https://raw.githubusercontent.com/captainlostic/Dear-ReGui/main/ReGui.lua'
 }
 
