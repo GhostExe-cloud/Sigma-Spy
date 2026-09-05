@@ -370,7 +370,8 @@ Ui:SetFontFile(FontJsonFile)
 Process:CheckConfig(Config)
 Files:LoadModules(Modules, {
 	Modules = Modules,
-	Services = Services
+	Services = Services,
+	Configuration = Configuration
 })
 
 --// ReGui Create window
