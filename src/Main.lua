@@ -212,25 +212,24 @@ local Files = (function()
 	function Files:LoadLibraries(Scripts: table, ...): table
 		local Modules = {}
 		for Name, Content in next, Scripts do
-			--// Base64 format
-			local IsBase64 = typeof(Content) == "table" and Content[1] == "base64"
-			Content = IsBase64 and Content[2] or Content
+			--// Skip if nil
+			if Content == nil then 
+				warn(`[Sigma Spy] Skipping {Name} - Content is nil`)
+				continue 
+			end
 
-			--// Tables
-			if typeof(Content) ~= "string" and not IsBase64 then 
+			--// Tables (already loaded modules)
+			if typeof(Content) ~= "string" then 
 				Modules[Name] = Content
 				continue 
 			end
 
-			--// Decode Base64
-			if IsBase64 then
-				Content = crypt.base64decode(Content)
-				Scripts[Name] = Content
-			end
-
 			--// Compile library 
 			local Closure, Error = loadstring(Content, Name)
-			assert(Closure, `Failed to load {Name}: {Error}`)
+			if not Closure then
+				warn(`[Sigma Spy] Failed to load {Name}: {Error}`)
+				continue
+			end
 
 			Modules[Name] = Closure(...)
 		end
@@ -302,9 +301,7 @@ Files:Init({
 
 local Folder = Files.FolderName
 local Scripts = {
-	--// User configurations
-	Config = Files:GetModule(`{Folder}/Config`, "Config"),
-	ReturnSpoofs = Files:GetModule(`{Folder}/Return spoofs`, "Return Spoofs"),
+	--// User configurations (load as strings directly)
 	Configuration = Configuration,
 	Files = Files,
 
@@ -316,6 +313,14 @@ local Scripts = {
 	Generation = Files:GetFile("lib/Generation.lua"),
 	Communication = Files:GetFile("lib/Communication.lua")
 }
+
+--// Load Config and ReturnSpoofs after Files init
+pcall(function()
+	Scripts.Config = Files:GetModule(`{Folder}/Config`, "Config")
+end)
+pcall(function()
+	Scripts.ReturnSpoofs = Files:GetModule(`{Folder}/Return spoofs`, "Return Spoofs")
+end)
 
 --// Services
 local Players: Players = Services.Players
