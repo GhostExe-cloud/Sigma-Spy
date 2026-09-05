@@ -361,6 +361,9 @@ local Generation = Modules.Generation
 local Communication = Modules.Communication
 local Config = Modules.Config
 
+-- Add Configuration to Modules table directly
+Modules.Configuration = Configuration
+
 --// Use custom font (optional)
 local FontContent = Files:GetAsset("ProggyClean.ttf", true)
 local FontJsonFile = Files:CreateFont("ProggyClean", FontContent)
@@ -368,6 +371,11 @@ Ui:SetFontFile(FontJsonFile)
 
 --// Load modules
 Process:CheckConfig(Config)
+
+-- Debug: Print Configuration to verify it exists
+print("[Sigma Spy Debug] Configuration:", Configuration)
+print("[Sigma Spy Debug] RepoUrl:", Configuration and Configuration.RepoUrl or "NIL")
+
 Files:LoadModules(Modules, {
 	Modules = Modules,
 	Services = Services,
