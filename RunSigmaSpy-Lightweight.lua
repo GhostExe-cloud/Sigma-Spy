@@ -206,10 +206,23 @@ end)
 print("[Sigma Spy LIGHTWEIGHT] Creating channel...")
 local ChannelId, Event = Communication:CreateChannel()
 
--- Logger with GUI
+-- Logger with GUI (bypass communication to prevent stack overflow)
+local DirectLogQueue = {}
 Communication:AddCommCallback("QueueLog", function(Data)
-    pcall(function()
-        AddLog(Data)
+    -- Prevent recursive logging
+    if #DirectLogQueue > 50 then
+        DirectLogQueue = {}
+    end
+    
+    table.insert(DirectLogQueue, Data)
+    
+    task.spawn(function()
+        pcall(function()
+            for i, logData in ipairs(DirectLogQueue) do
+                AddLog(logData)
+                DirectLogQueue[i] = nil
+            end
+        end)
     end)
 end)
 
