@@ -109,22 +109,28 @@ end
 
 function Generation:LoadParser(ModuleUrl: string)
 	local ParserSources = {
+		ModuleUrl, -- Try the configured URL first (GhostExe-cloud version)
+		"https://raw.githubusercontent.com/GhostExe-cloud/Sigma-Spy/main/lib/Parser.luau", -- Backup for configured URL
 		"https://raw.githubusercontent.com/nevskiydeveloper/Roblox-Parser/main/dist/Main.luau", -- Working mirror
-		ModuleUrl, -- Try the configured URL
 		"https://raw.githubusercontent.com/xfwil/Roblox-parser/main/dist/Main.luau",
 		"https://raw.githubusercontent.com/depthso/Roblox-parser/main/dist/Main.luau"
 	}
 	
 	for _, url in ipairs(ParserSources) do
 		local success, result = pcall(function()
-			return loadstring(game:HttpGet(url), "Parser")()
+			local code = game:HttpGet(url)
+			local func = loadstring(code, "Parser")
+			if not func then
+				error("Failed to compile parser code")
+			end
+			return func()
 		end)
-		if success and result then
+		if success and result and result.Modules then
 			ParserModule = result
 			print("[Sigma Spy] Loaded Parser from:", url)
 			return
 		else
-			warn("[Sigma Spy] Failed to load Parser from:", url)
+			warn("[Sigma Spy] Failed to load Parser from:", url, result or "")
 		end
 	end
 	
