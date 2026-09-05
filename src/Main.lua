@@ -1,10 +1,10 @@
 --// Base Configuration
 local Configuration = {
-	UseWorkspace = true,  -- Changed to true to use local files
+	UseWorkspace = false,
 	NoActors = false,
 	FolderName = "Sigma Spy",
-	RepoUrl = "https://raw.githubusercontent.com/Dexz00/Sigma-Spy/main",
-	ParserUrl = "https://raw.githubusercontent.com/Babyhamsta/Roblox-parser/main/dist/Main.luau"  -- Using working mirror
+	RepoUrl = "https://raw.githubusercontent.com/GhostExe-cloud/Sigma-Spy/main",
+	ParserUrl = "https://raw.githubusercontent.com/depthso/Roblox-parser/refs/heads/main/dist/Main.luau"
 }
 
 print("[Sigma Spy] v12.0.1 - Config Fix Build - Loaded")
@@ -308,13 +308,13 @@ local Scripts = {
 	Configuration = Configuration,
 	Files = Files,
 
-	--// Libraries
-	Process = {"base64", "COMPILE: @lib/Process.lua"},
-	Hook = {"base64", "COMPILE: @lib/Hook.lua"},
-	Flags = {"base64", "COMPILE: @lib/Flags.lua"},
-	Ui = {"base64", "COMPILE: @lib/Ui.lua"},
-	Generation = {"base64", "COMPILE: @lib/Generation.lua"},
-	Communication = {"base64", "COMPILE: @lib/Communication.lua"}
+	--// Libraries - Load from GitHub repo
+	Process = Files:GetFile("lib/Process.lua"),
+	Hook = Files:GetFile("lib/Hook.lua"),
+	Flags = Files:GetFile("lib/Flags.lua"),
+	Ui = Files:GetFile("lib/Ui.lua"),
+	Generation = Files:GetFile("lib/Generation.lua"),
+	Communication = Files:GetFile("lib/Communication.lua")
 }
 
 --// Services
