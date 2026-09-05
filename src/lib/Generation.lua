@@ -108,33 +108,26 @@ function Generation:WriteDump(Content: string): string
 end
 
 function Generation:LoadParser(ModuleUrl: string)
+	-- Use only known working parser sources
+	-- The GhostExe-cloud parser has initialization issues with loadstring
 	local ParserSources = {
-		"https://raw.githubusercontent.com/nevskiydeveloper/Roblox-Parser/main/dist/Main.luau", -- Working minified version - use first
-		ModuleUrl, -- Try the configured URL
-		"https://raw.githubusercontent.com/GhostExe-cloud/Sigma-Spy/main/lib/Parser.luau", -- Backup for configured URL
-		"https://raw.githubusercontent.com/xfwil/Roblox-parser/main/dist/Main.luau"
+		"https://raw.githubusercontent.com/nevskiydeveloper/Roblox-Parser/main/dist/Main.luau", -- Working minified version
+		"https://raw.githubusercontent.com/xfwil/Roblox-parser/main/dist/Main.luau" -- Backup mirror
 	}
 	
+	-- Try fallback sources
 	for _, url in ipairs(ParserSources) do
 		local success, result = pcall(function()
 			local code = game:HttpGet(url)
-			
-			-- Try to compile the code
-			local func, compileErr = loadstring(code, "Parser")
+			local func = loadstring(code, "Parser")
 			if not func then
-				error("Failed to compile: " .. tostring(compileErr))
+				error("Failed to compile")
 			end
 			
-			-- Set up environment for the parser
-			local env = getfenv(func)
-			setfenv(func, env)
-			
-			-- Execute and return the module
 			local module = func()
 			
-			-- Validate the module has required structure
 			if not module or not module.Modules then
-				error("Invalid module structure - missing Modules table")
+				error("Invalid module structure")
 			end
 			
 			return module
