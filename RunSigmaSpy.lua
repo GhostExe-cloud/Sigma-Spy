@@ -11,7 +11,7 @@ local Files = loadstring(readfile("src/lib/Files.lua"))()
 -- Configuration
 local Configuration = {
     UseWorkspace = false,  -- Changed to false to fetch Config/templates from GitHub
-    NoActors = false,
+    NoActors = true,  -- Disabled to prevent freezing
     FolderName = "Sigma Spy",
     RepoUrl = "https://raw.githubusercontent.com/Dexz00/Sigma-Spy/main",
     ParserUrl = "https://raw.githubusercontent.com/xfwil/Roblox-parser/main/dist/Main.luau"
