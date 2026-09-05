@@ -300,10 +300,45 @@ Files:Init({
 })
 
 local Folder = Files.FolderName
+
+--// Default Config if template fails to load
+local DefaultConfig = [[
+return {
+	Debug = false,
+	ForceKonstantDecompiler = false,
+	NoFunctionPatching = false,
+	ReplaceMetaCallFunc = false,
+	ForceUseCustomComm = false,
+	NoReceiveHooking = false,
+	BlackListedServices = {},
+	VariableNames = {"Argument"},
+	SyntaxColors = {},
+	ThemeConfig = {BaseTheme = "ImGui", TextSize = 12}
+}
+]]
+
+--// Default ReturnSpoofs
+local DefaultReturnSpoofs = [[
+return {}
+]]
+
+--// Try to load Config and ReturnSpoofs, use defaults if they fail
+local ConfigContent = DefaultConfig
+local ReturnSpoofsContent = DefaultReturnSpoofs
+
+pcall(function()
+	ConfigContent = Files:GetModule(`{Folder}/Config`, "Config")
+end)
+pcall(function()
+	ReturnSpoofsContent = Files:GetModule(`{Folder}/Return spoofs`, "Return Spoofs")
+end)
+
 local Scripts = {
-	--// User configurations (load as strings directly)
+	--// User configurations
 	Configuration = Configuration,
 	Files = Files,
+	Config = ConfigContent,
+	ReturnSpoofs = ReturnSpoofsContent,
 
 	--// Libraries - Load from GitHub repo
 	Process = Files:GetFile("lib/Process.lua"),
@@ -313,14 +348,6 @@ local Scripts = {
 	Generation = Files:GetFile("lib/Generation.lua"),
 	Communication = Files:GetFile("lib/Communication.lua")
 }
-
---// Load Config and ReturnSpoofs after Files init
-pcall(function()
-	Scripts.Config = Files:GetModule(`{Folder}/Config`, "Config")
-end)
-pcall(function()
-	Scripts.ReturnSpoofs = Files:GetModule(`{Folder}/Return spoofs`, "Return Spoofs")
-end)
 
 --// Services
 local Players: Players = Services.Players
