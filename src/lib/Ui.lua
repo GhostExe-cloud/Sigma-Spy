@@ -73,8 +73,30 @@ type Log = {
 --// Compatibility
 local SetClipboard = setclipboard or toclipboard or set_clipboard
 
---// Libraries
-local ReGui = loadstring(game:HttpGet('https://github.com/depthso/Dear-ReGui/raw/refs/heads/main/ReGui.lua'), "ReGui")()
+--// Libraries - Load ReGui with fallback mirrors
+local ReGui
+local ReGuiSources = {
+    'https://raw.githubusercontent.com/Awakenchan/Dear-ReGui/main/ReGui.lua',
+    'https://raw.githubusercontent.com/kiciahook/Dear-ReGui/main/ReGui.lua',
+    'https://raw.githubusercontent.com/captainlostic/Dear-ReGui/main/ReGui.lua'
+}
+
+for _, url in ipairs(ReGuiSources) do
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url), "ReGui")()
+    end)
+    if success and result then
+        ReGui = result
+        print("[Sigma Spy] Loaded ReGui from:", url)
+        break
+    else
+        warn("[Sigma Spy] Failed to load ReGui from:", url)
+    end
+end
+
+if not ReGui then
+    error("[Sigma Spy] Failed to load ReGui from all sources!")
+end
 
 --// Modules
 local Flags

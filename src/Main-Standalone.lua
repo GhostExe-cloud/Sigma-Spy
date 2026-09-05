@@ -1,13 +1,20 @@
+--[[
+	⣿⣿⣿⣿⣿ SIGMA SPY ⣿⣿⣿⣿⣿
+	@author depso (depthso) - Original Creator
+	@reupload_by Dexz00
+	@description v12.0.1 - Standalone build that loads libraries directly
+]]
+
 --// Base Configuration
 local Configuration = {
-	UseWorkspace = true,  -- Changed to true to use local files
+	UseWorkspace = true, -- Changed to true to load from workspace
 	NoActors = false,
 	FolderName = "Sigma Spy",
 	RepoUrl = "https://raw.githubusercontent.com/Dexz00/Sigma-Spy/main",
-	ParserUrl = "https://raw.githubusercontent.com/Babyhamsta/Roblox-parser/main/dist/Main.luau"  -- Using working mirror
+	ParserUrl = "https://raw.githubusercontent.com/depthso/Roblox-parser/refs/heads/main/dist/Main.luau"
 }
 
-print("[Sigma Spy] v12.0.1 - Config Fix Build - Loaded")
+print("[Sigma Spy] v12.0.1 - Standalone Build - Loaded")
 
 --// Load overwrites
 local Parameters = {...}
@@ -295,12 +302,14 @@ local Files = (function()
 
 	return Files
 end)()
+
 Files:PushConfig(Configuration)
-Files:Init({
-	Services = Services
-})
+Files:Init({Services = Services})
 
 local Folder = Files.FolderName
+
+--// Load libraries from source files directly (no base64 encoding needed)
+local LibraryPath = "src/lib/"
 local Scripts = {
 	--// User configurations
 	Config = Files:GetModule(`{Folder}/Config`, "Config"),
@@ -308,13 +317,13 @@ local Scripts = {
 	Configuration = Configuration,
 	Files = Files,
 
-	--// Libraries
-	Process = {"base64", "COMPILE: @lib/Process.lua"},
-	Hook = {"base64", "COMPILE: @lib/Hook.lua"},
-	Flags = {"base64", "COMPILE: @lib/Flags.lua"},
-	Ui = {"base64", "COMPILE: @lib/Ui.lua"},
-	Generation = {"base64", "COMPILE: @lib/Generation.lua"},
-	Communication = {"base64", "COMPILE: @lib/Communication.lua"}
+	--// Load libraries from workspace files directly
+	Process = readfile(`{LibraryPath}Process.lua`),
+	Hook = readfile(`{LibraryPath}Hook.lua`),
+	Flags = readfile(`{LibraryPath}Flags.lua`),
+	Ui = readfile(`{LibraryPath}Ui.lua`),
+	Generation = readfile(`{LibraryPath}Generation.lua`),
+	Communication = readfile(`{LibraryPath}Communication.lua`)
 }
 
 --// Services

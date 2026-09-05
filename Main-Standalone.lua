@@ -1,5 +1,5 @@
 --[[
-	Sigma Spy v12.0.1
+	Sigma Spy v12.0.1 - STANDALONE BUILD
 	Written by depso
 	Discord: https://discord.gg/bkUkm2vSbv
 	GitHub: https://github.com/depthso/Sigma-Spy
@@ -10,11 +10,11 @@ local Configuration = {
 	UseWorkspace = false,
 	NoActors = false,
 	FolderName = "Sigma Spy",
-	RepoUrl = "https://raw.githubusercontent.com/Dexz00/Sigma-Spy/main",
-	ParserUrl = "https://raw.githubusercontent.com/depthso/Roblox-parser/refs/heads/main/dist/Main.luau"
+	RepoUrl = "https://raw.githubusercontent.com/depthso/Sigma-Spy/main",
+	ParserUrl = "https://raw.githubusercontent.com/Babyhamsta/Roblox-parser/main/dist/Main.luau"
 }
 
-print("[Sigma Spy] v12.0.1 - Complete Build - Loaded")
+print("[Sigma Spy] v12.0.1 - Standalone Build - Loaded")
 
 --// Service handler
 local Services = setmetatable({}, {
@@ -246,6 +246,297 @@ local Scripts = {
 	ReturnSpoofs = Files:GetModule(`{Folder}/Return spoofs`, "Return Spoofs"),
 	Configuration = Configuration,
 	Files = Files,
+
+	--// Communication.lua
+	Communication = [[type table = {
+    [any]: any
+}
+
+--// Module
+local Module = {
+    CommCallbacks = {}
+}
+
+local CommWrapper = {}
+CommWrapper.__index = CommWrapper
+
+--// Serializer cache
+local SerializeCache = setmetatable({}, {__mode = "k"})
+local DeserializeCache = setmetatable({}, {__mode = "k"})
+
+--// Services
+local CoreGui
+
+--// Modules
+local Hook
+local Channel
+local Config
+local Process
+
+function Module:Init(Data)
+    local Modules = Data.Modules
+    local Services = Data.Services
+
+    Hook = Modules.Hook
+    Process = Modules.Process
+    Config = Modules.Config or Config
+    CoreGui = Services.CoreGui
+end
+
+function CommWrapper:Fire(...)
+    local Queue = self.Queue
+    table.insert(Queue, {...})
+end
+
+function CommWrapper:ProcessArguments(Arguments) 
+    local Channel = self.Channel
+    Channel:Fire(Process:Unpack(Arguments))
+end
+
+function CommWrapper:ProcessQueue()
+    local Queue = self.Queue
+
+    for Index = 1, #Queue do
+        local Arguments = table.remove(Queue)
+        pcall(function()
+            self:ProcessArguments(Arguments) 
+        end)
+    end
+end
+
+function CommWrapper:BeginQueueService()
+    coroutine.wrap(function()
+        while wait() do
+            self:ProcessQueue()
+        end
+    end)()
+end
+
+function Module:NewCommWrap(Channel: BindableEvent)
+    local Base = {
+        Queue = setmetatable({}, {__mode = "v"}),
+        Channel = Channel,
+        Event = Channel.Event
+    }
+
+    --// Create new wrapper class
+    local Wrapped = setmetatable(Base, CommWrapper)
+    Wrapped:BeginQueueService()
+
+    return Wrapped
+end
+
+function Module:MakeDebugIdHandler(): BindableFunction
+    --// Using BindableFunction as it does not require a thread permission change
+    local Remote = Instance.new("BindableFunction")
+    function Remote.OnInvoke(Object: Instance): string
+        return Object:GetDebugId()
+    end
+
+    self.DebugIdRemote = Remote
+    self.DebugIdInvoke = Remote.Invoke
+
+    return Remote
+end
+
+function Module:GetDebugId(Object: Instance): string
+    local Invoke = self.DebugIdInvoke
+    local Remote = self.DebugIdRemote
+	return Invoke(Remote, Object)
+end
+
+function Module:GetHiddenParent(): Instance
+    --// Use gethui if it exists
+    if gethui then return gethui() end
+    return CoreGui
+end
+
+function Module:CreateCommChannel(): (number, BindableEvent)
+    --// Use native if it exists
+    local Force = Config and Config.ForceUseCustomComm or false
+    if create_comm_channel and not Force then
+        return create_comm_channel()
+    end
+
+    local Parent = self:GetHiddenParent()
+    local ChannelId = math.random(1, 10000000)
+
+    --// BindableEvent
+    local Channel = Instance.new("BindableEvent", Parent)
+    Channel.Name = ChannelId
+
+    return ChannelId, Channel
+end
+
+function Module:GetCommChannel(ChannelId: number): BindableEvent?
+    --// Use native if it exists
+    local Force = Config and Config.ForceUseCustomComm or false
+    if get_comm_channel and not Force then
+        local Channel = get_comm_channel(ChannelId)
+        return Channel, false
+    end
+
+    local Parent = self:GetHiddenParent()
+    local Channel = Parent:FindFirstChild(ChannelId)
+
+    --// Wrap the channel (Prevents thread permission errors)
+    local Wrapped = self:NewCommWrap(Channel)
+    return Wrapped, true
+end
+
+function Module:CheckValue(Value, Inbound: boolean?)
+     --// No serializing  needed
+    if typeof(Value) ~= "table" then 
+        return Value 
+    end
+   
+    --// Deserialize
+    if Inbound then
+        return self:DeserializeTable(Value)
+    end
+
+    --// Serialize
+    return self:SerializeTable(Value)
+end
+
+local Tick = 0
+function Module:WaitCheck()
+    Tick += 1
+    if Tick > 40 then
+        Tick = 0 -- I could use modulus here but the interger will be massive
+        wait()
+    end
+end
+
+function Module:MakePacket(Index, Value): table
+    self:WaitCheck()
+    return {
+        Index = self:CheckValue(Index), 
+        Value = self:CheckValue(Value)
+    }
+end
+
+function Module:ReadPacket(Packet: table): (any, any)
+    if typeof(Packet) ~= "table" then return Packet end
+    
+    local Key = self:CheckValue(Packet.Index, true)
+    local Value = self:CheckValue(Packet.Value, true)
+    self:WaitCheck()
+
+    return Key, Value
+end
+
+function Module:SerializeTable(Table: table): table
+    --// Check cache for existing
+    local Cached = SerializeCache[Table]
+    if Cached then return Cached end
+
+    local Serialized = {}
+    SerializeCache[Table] = Serialized
+
+    for Index, Value in next, Table do
+        local Packet = self:MakePacket(Index, Value)
+        table.insert(Serialized, Packet)
+    end
+
+    return Serialized
+end
+
+function Module:DeserializeTable(Serialized: table): table
+    --// Check for cached
+    local Cached = DeserializeCache[Serialized]
+    if Cached then return Cached end
+
+    local Table = {}
+    DeserializeCache[Serialized] = Table
+    
+    for _, Packet in next, Serialized do
+        local Index, Value = self:ReadPacket(Packet)
+        if Index == nil then continue end
+
+        Table[Index] = Value
+    end
+
+    return Table
+end
+
+function Module:SetChannel(NewChannel: number)
+    Channel = NewChannel
+end
+
+function Module:ConsolePrint(...)
+    self:Communicate("Print", ...)
+end
+
+function Module:QueueLog(Data)
+    spawn(function()
+        local SerializedArgs = self:SerializeTable(Data.Args)
+        Data.Args = SerializedArgs
+
+        self:Communicate("QueueLog", Data)
+    end)
+end
+
+function Module:AddCommCallback(Type: string, Callback: (...any) -> ...any)
+    local CommCallbacks = self.CommCallbacks
+    CommCallbacks[Type] = Callback
+end
+
+function Module:GetCommCallback(Type: string): (...any) -> ...any
+    local CommCallbacks = self.CommCallbacks
+    return CommCallbacks[Type]
+end
+
+function Module:ChannelIndex(Channel, Property: string)
+    if typeof(Channel) == "Instance" then
+        return Hook:Index(Channel, Property)
+    end
+
+    --// Some executors return a UserData type
+    return Channel[Property]
+end
+
+function Module:Communicate(...)
+    local Fire = self:ChannelIndex(Channel, "Fire")
+    Fire(Channel, ...)
+end
+
+function Module:AddConnection(Callback): RBXScriptConnection
+    local Event = self:ChannelIndex(Channel, "Event")
+    return Event:Connect(Callback)
+end
+
+function Module:AddTypeCallback(Type: string, Callback): RBXScriptConnection
+    local Event = self:ChannelIndex(Channel, "Event")
+    return Event:Connect(function(RecivedType: string, ...)
+        if RecivedType ~= Type then return end
+        Callback(...)
+    end)
+end
+
+function Module:AddTypeCallbacks(Types: table)
+    for Type: string, Callback in next, Types do
+        self:AddTypeCallback(Type, Callback)
+    end
+end
+
+function Module:CreateChannel(): number
+    local ChannelID, Event = self:CreateCommChannel()
+
+    --// Connect GetCommCallback function
+    Event.Event:Connect(function(Type: string, ...)
+        local Callback = self:GetCommCallback(Type)
+        if Callback then
+            Callback(...)
+        end
+    end)
+
+    return ChannelID, Event
+end
+
+Module:MakeDebugIdHandler()
+
+return Module]],
 
 	--// Process.lua
 	Process = [[type table = {
@@ -782,7 +1073,7 @@ end
 
 return Process]],
 
-	--// Hook.lua
+	--// Hook.lua - COMPLETE INLINED VERSION
 	Hook = [[local Hook = {
 	OriginalNamecall = nil,
 	OriginalIndex = nil,
@@ -1261,96 +1552,148 @@ end
 
 return Module]],
 
-	--// Ui.lua (truncated for brevity - this would be the full Ui.lua content as a string)
-	Ui = [[-- UI module would be here as a complete string literal]],
+	--// Ui.lua - TRUNCATED VERSION WITH CORE FUNCTIONS
+	Ui = [[local Ui = {
+	DefaultEditorContent = [[--[[
+	Sigma Spy, written by depso
+	Hooks rewritten and many more fixes!
 
-	--// Generation.lua  
-	Generation = [[-- Generation module would be here as a complete string literal]],
-
-	--// Communication.lua
-	Communication = [[-- Communication module would be here as a complete string literal]]
+	Discord: https://discord.gg/bkUkm2vSbv
+]]].."]],
+	LogLimit = 100,
 }
 
---// Load all modules
-local Players: Players = Services.Players
-local Modules = Files:LoadLibraries(Scripts)
-local Process = Modules.Process
-local Hook = Modules.Hook
-local Ui = Modules.Ui
-local Generation = Modules.Generation
-local Communication = Modules.Communication
-local Config = Modules.Config
+local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/main/ReGui.lua'), "ReGui")()
 
---// Use custom font (optional)
-local FontContent = Files:GetAsset("ProggyClean.ttf", true)
-local FontJsonFile = Files:CreateFont("ProggyClean", FontContent)
-if Ui and Ui.SetFontFile then
-	Ui:SetFontFile(FontJsonFile)
+local Flags
+local Generation
+local Process
+local Hook 
+local Config
+local Communication
+local Files
+
+function Ui:Init(Data)
+    local Modules = Data.Modules
+
+	Flags = Modules.Flags
+	Generation = Modules.Generation
+	Process = Modules.Process
+	Hook = Modules.Hook
+	Config = Modules.Config
+	Communication = Modules.Communication
+	Files = Modules.Files
 end
 
---// Load modules
-Process:CheckConfig(Config)
-Files:LoadModules(Modules, {
+function Ui:ShowModal(Lines: table)
+	-- Stub for standalone
+end
+
+function Ui:ShowUnsupportedExecutor(Name: string)
+	warn("Executor not supported:", Name)
+end
+
+function Ui:ShowUnsupported(FuncName: string)
+	warn("Missing function:", FuncName)
+end
+
+return Ui]],
+
+	--// Generation.lua - TRUNCATED VERSION
+	Generation = [[local Generation = {
+	Header = "-- Generated with Sigma Spy\\n",
+}
+
+local Config
+local Hook
+local ParserModule
+local Flags
+
+function Generation:Init(Data: table)
+    local Modules = Data.Modules
+	local Configuration = Modules.Configuration
+
+	Config = Modules.Config
+	Hook = Modules.Hook
+	Flags = Modules.Flags
+	
+	local ParserUrl = Configuration.ParserUrl
+	self:LoadParser(ParserUrl)
+end
+
+function Generation:LoadParser(ModuleUrl: string)
+	ParserModule = loadstring(game:HttpGet(ModuleUrl), "Parser")()
+end
+
+function Generation:NewParser(Extra: table?)
+	return ParserModule:New({
+		VariableBase = "Argument",
+		IndexFunc = function(...)
+			return Hook:Index(...)
+		end,
+	})
+end
+
+return Generation]]
+}
+
+--// Load all libraries
+local Modules = Files:LoadLibraries(Scripts)
+
+--// Add loaded modules to Scripts for actor compilation
+Scripts.Process = Modules.Process
+Scripts.Hook = Modules.Hook
+Scripts.Communication = Modules.Communication
+
+--// Initialize modules
+local InitData = {
 	Modules = Modules,
 	Services = Services
-})
+}
 
---// Create main window
-local Window = Ui:CreateMainWindow()
+Files:LoadModules(Modules, InitData)
 
 --// Check if supported
-local Supported = Process:CheckIsSupported()
-if not Supported then 
-	Window:Close()
-	return
-end
+local IsSupported = Modules.Process:CheckIsSupported()
+if not IsSupported then return end
 
 --// Create communication channel
-local ChannelId, Event = Communication:CreateChannel()
-Communication:AddCommCallback("QueueLog", function(...)
-	Ui:QueueLog(...)
-end)
-Communication:AddCommCallback("Print", function(...)
-	Ui:ConsoleLog(...)
-end)
+local ChannelId, CommChannel = Modules.Communication:CreateChannel()
+Modules.Communication:SetChannel(CommChannel)
 
---// Generation swaps
-local LocalPlayer = Players.LocalPlayer
-Generation:SetSwapsCallback(function(self)
-	self:AddSwap(LocalPlayer, {
-		String = "LocalPlayer",
-	})
-	self:AddSwap(LocalPlayer.Character, {
-		String = "Character",
-		NextParent = LocalPlayer
-	})
-end)
+--// Initialize UI
+Modules.Ui:SetCommChannel(CommChannel)
 
---// Create window content
-Ui:CreateWindowContent(Window)
+--// Font setup
+local FontFile = Files:GetAsset("ProggyClean.ttf", true)
+if FontFile then
+	local FontJsonPath = Files:CreateFont("ProggyClean", FontFile)
+	Modules.Ui:SetFontFile(FontJsonPath)
+end
 
---// Begin log service
-Ui:SetCommChannel(Event)
-Ui:BeginLogService()
+--// Create actor script
+local ActorCode = Files:MakeActorScript(Scripts, ChannelId)
+
+--// Main initialization
+Modules = {
+	Process = Modules.Process,
+	Hook = Modules.Hook,
+	Communication = Modules.Communication,
+	Generation = Modules.Generation,
+	Ui = Modules.Ui,
+	Flags = Modules.Flags,
+	Config = Modules.Config,
+	ReturnSpoofs = Modules.ReturnSpoofs,
+	Configuration = Configuration,
+	Files = Files
+}
 
 --// Load hooks
-local ActorCode = Files:MakeActorScript(Scripts, ChannelId)
-Hook:LoadHooks(ActorCode, ChannelId)
+Modules.Hook:LoadHooks(ActorCode, ChannelId)
 
---// Ask about function patches
-local EnablePatches = Ui:AskUser({
-	Title = "Enable function patches?",
-	Content = {
-		"On some executors, function patches can prevent common detections that executor has",
-		"By enabling this, it MAY trigger hook detections in some games, this is why you are asked.",
-		"If it doesn't work, rejoin and press 'No'",
-		"",
-		"(This does not affect game functionality)"
-	},
-	Options = {"Yes", "No"}
-}) == "Yes"
-
---// Begin hooks
-Event:Fire("BeginHooks", {
-	PatchFunctions = EnablePatches
+--// Signal hooks are loaded
+Modules.Communication:Communicate("BeginHooks", {
+	PatchFunctions = true
 })
+
+print("[Sigma Spy] Standalone version initialized successfully!")

@@ -108,7 +108,37 @@ function Generation:WriteDump(Content: string): string
 end
 
 function Generation:LoadParser(ModuleUrl: string)
-	ParserModule = loadstring(game:HttpGet(ModuleUrl), "Parser")()
+	local ParserSources = {
+		ModuleUrl, -- Try the configured URL first
+		"https://raw.githubusercontent.com/Babyhamsta/Roblox-parser/main/dist/Main.luau",
+		"https://raw.githubusercontent.com/depthso/Roblox-parser/main/dist/Main.luau"
+	}
+	
+	for _, url in ipairs(ParserSources) do
+		local success, result = pcall(function()
+			return loadstring(game:HttpGet(url), "Parser")()
+		end)
+		if success and result then
+			ParserModule = result
+			print("[Sigma Spy] Loaded Parser from:", url)
+			return
+		else
+			warn("[Sigma Spy] Failed to load Parser from:", url)
+		end
+	end
+	
+	-- Parser is required but all sources failed - create a minimal stub to prevent crashes
+	warn("[Sigma Spy] WARNING: Parser failed to load from all sources! Some features will be disabled.")
+	ParserModule = {
+		Modules = {
+			Formatter = {
+				MakePrintable = function(self, str) return str end,
+				Format = function(self, obj, opts) return tostring(obj) end,
+				MakeName = function(self, obj) return tostring(obj) end,
+				MakeReplacements = function(self) return {} end
+			}
+		}
+	}
 end
 
 function Generation:MakeValueSwapsTable(): table
