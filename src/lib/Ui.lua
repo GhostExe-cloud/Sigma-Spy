@@ -187,8 +187,10 @@ function Ui:FontWasSuccessful()
 end
 
 function Ui:LoadReGui()
-	local ThemeConfig = Config and Config.ThemeConfig or {BaseTheme = "ImGui", TextSize = 12}
-	ThemeConfig.TextFont = TextFont
+	local ThemeConfig = (Config and Config.ThemeConfig) or {BaseTheme = "ImGui", TextSize = 12}
+	if ThemeConfig then
+		ThemeConfig.TextFont = TextFont
+	end
 
 	--// ReGui
 	ReGui:DefineTheme("SigmaSpy", ThemeConfig)
