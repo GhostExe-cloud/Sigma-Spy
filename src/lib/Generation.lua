@@ -110,8 +110,8 @@ end
 function Generation:LoadParser(ModuleUrl: string)
 	local ParserSources = {
 		ModuleUrl, -- Try the configured URL first
-		"https://raw.githubusercontent.com/Babyhamsta/Roblox-parser/main/dist/Main.luau",
-		"https://raw.githubusercontent.com/depthso/Roblox-parser/main/dist/Main.luau"
+		"https://raw.githubusercontent.com/xfwil/Roblox-parser/main/dist/Main.luau",
+		"https://raw.githubusercontent.com/nevskiydeveloper/Roblox-Parser/main/dist/Main.luau"
 	}
 	
 	for _, url in ipairs(ParserSources) do
