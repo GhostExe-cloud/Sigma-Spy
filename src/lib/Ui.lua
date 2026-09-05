@@ -281,9 +281,13 @@ function Ui:CreateMainWindow()
 	local Window = self:CreateWindow()
 	self.Window = Window
 
-	--// Check if the font was successfully downloaded
-	self:FontWasSuccessful()
-	self:AuraCounterService()
+	--// Check if the font was successfully downloaded (wrapped to prevent freeze)
+	pcall(function() self:FontWasSuccessful() end)
+	
+	--// Start aura counter in background (task.spawn to prevent blocking)
+	task.spawn(function()
+		pcall(function() self:AuraCounterService() end)
+	end)
 
 	--// UiVisible flag callback
 	Flags:SetFlagCallback("UiVisible", function(self, Visible)
